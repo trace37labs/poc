@@ -114,10 +114,10 @@
         <div class="step active" id="a1">
             <span class="step-status st-run" id="a1-st">Step 1</span>
             <span class="step-badge">1</span>
-            <h2>Attacker captures their Google OAuth token</h2>
+            <h2>Attacker obtains their own Google OAuth token</h2>
             <div class="step-body">
-                <p>Sign into <a href="https://www.kayak.com/login" target="_blank" style="color:#58a6ff;">kayak.com/login</a> with the <strong style="color:#e94560;">attacker's</strong> Google account. Capture the <code>accessToken</code> from <code>POST /k/run/googleauth/login</code> in your proxy or DevTools Network tab.</p>
-                <input type="text" id="tokenInput" placeholder="Paste attacker's access_token here">
+                <p>The attacker signs into <a href="https://www.kayak.com/login" target="_blank" style="color:#58a6ff;">kayak.com/login</a> with <strong style="color:#e94560;">their own</strong> Google account and extracts the <code>accessToken</code> from <code>POST /k/run/googleauth/login</code>.</p>
+                <input type="text" id="tokenInput" placeholder="Paste attacker's Google access_token here">
                 <button class="btn btn-green" onclick="setToken()" style="margin-top:8px;">Generate phishing link →</button>
             </div>
         </div>
